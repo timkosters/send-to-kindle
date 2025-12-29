@@ -1,51 +1,61 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from email.utils import formataddr
 import os
-from .config import SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, KINDLE_EMAIL, GMAIL_USER
+import base64
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content, Attachment, FileContent, FileName, FileType, Disposition
 
 class KindleSender:
     def __init__(self):
         pass
 
     def send_epub(self, epub_path):
-        """Send EPUB file to Kindle email"""
-        if not SMTP_USER or not SMTP_PASSWORD:
-            print("ℹ️  SMTP credentials not configured. Skipping email.")
+        """Send EPUB file to Kindle email using SendGrid"""
+        
+        # Load credentials from environment
+        api_key = os.environ.get('SENDGRID_API_KEY')
+        from_email_addr = os.environ.get('FROM_EMAIL')
+        to_email_addr = os.environ.get('KINDLE_EMAIL')
+
+        if not api_key:
+            print("ℹ️  SendGrid API Key not found. Skipping email.")
             return False
 
-        if not KINDLE_EMAIL:
-            print("ℹ️  Kindle email not configured. Skipping email.")
-            return False
+        if not from_email_addr or not to_email_addr:
+             print("ℹ️  Email addresses (FROM/TO) not configured. Skipping email.")
+             return False
 
         try:
-            print(f"📤 Sending {os.path.basename(epub_path)} to {KINDLE_EMAIL}...")
+            filename = os.path.basename(epub_path)
+            print(f"📤 Sending {filename} to {to_email_addr} via SendGrid...")
+
+            sg = SendGridAPIClient(api_key)
             
-            msg = MIMEMultipart()
-            msg['From'] = formataddr(('Send to Kindle', SMTP_USER))
-            msg['To'] = KINDLE_EMAIL
-            msg['Subject'] = 'Convert'  # Magic subject for Amazon
+            message = Mail(
+                from_email=Email(from_email_addr),
+                to_emails=To(to_email_addr),
+                subject='Convert',
+                html_content=Content("text/html", f"Here is your converted article: <strong>{filename}</strong><br><br>Sent from your Kindle Web App.")
+            )
 
+            # Read and encode file
             with open(epub_path, 'rb') as f:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(f.read())
-                encoders.encode_base64(part)
-                part.add_header(
-                    'Content-Disposition',
-                    f'attachment; filename="{os.path.basename(epub_path)}"'
-                )
-                msg.attach(part)
+                data = f.read()
+                f.close()
+            
+            encoded_file = base64.b64encode(data).decode()
+            
+            attachedFile = Attachment(
+                FileContent(encoded_file),
+                FileName(filename),
+                FileType('application/epub+zip'),
+                Disposition('attachment')
+            )
+            message.attachment = attachedFile
 
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
-            server.quit()
+            response = sg.send(message)
+            print(f"✅ Email sent! Status code: {response.status_code}")
+            
+            return str(response.status_code).startswith('2')
 
-            print(f"✅ Successfully sent to Kindle!")
-            return True
         except Exception as e:
             print(f"❌ Error sending to Kindle: {e}")
             return False
