@@ -299,6 +299,19 @@
 
 <body>
     <div class="container">
+        {% if user %}
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); font-size: 0.9rem;">
+            <span style="color: var(--text-muted);">👋 {{ user.name }}</span>
+            <div style="display: flex; gap: 16px;">
+                <a href="{{ url_for('settings') }}"
+                    style="color: var(--accent); text-decoration: none; font-weight: 500;">⚙️ Settings</a>
+                <a href="{{ url_for('auth.logout') }}" style="color: var(--text-muted); text-decoration: none;">Sign
+                    Out</a>
+            </div>
+        </div>
+        {% endif %}
+
         <header>
             <h1>Send to Kindle</h1>
             <div class="subtitle">Convert web articles to premium EPUBs</div>

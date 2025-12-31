@@ -7,13 +7,19 @@ class KindleSender:
     def __init__(self):
         pass
 
-    def send_epub(self, epub_path):
-        """Send EPUB file to Kindle email using SendGrid"""
+    def send_epub(self, epub_path, to_email=None):
+        """
+        Send EPUB file to Kindle email using SendGrid.
+        
+        Args:
+            epub_path: Path to the EPUB file
+            to_email: Optional recipient email. If not provided, uses KINDLE_EMAIL env var.
+        """
         
         # Load credentials from environment
         api_key = os.environ.get('SENDGRID_API_KEY')
         from_email_addr = os.environ.get('FROM_EMAIL')
-        to_email_addr = os.environ.get('KINDLE_EMAIL')
+        to_email_addr = to_email or os.environ.get('KINDLE_EMAIL')
 
         if not api_key:
             print("ℹ️  SendGrid API Key not found. Skipping email.")
