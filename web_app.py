@@ -26,6 +26,10 @@ from app.webhooks import webhooks_bp
 # Create Flask app
 app = Flask(__name__)
 
+# Handle HTTPS behind Railway's proxy (fixes OAuth redirect_uri using http://)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 
