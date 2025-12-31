@@ -9,7 +9,7 @@ class ImageProcessor:
     def __init__(self, session=None):
         self.session = session or requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
 
     def extract_images_from_original_html(self, soup, base_url):
@@ -94,7 +94,7 @@ class ImageProcessor:
                 return False
         return True
 
-    def download_image(self, url):
+    def download_image(self, url, referrer=None):
         """Download and optimize image for Kindle"""
         try:
             # Skip very small images or icons
@@ -103,7 +103,25 @@ class ImageProcessor:
                 return None
 
             print(f"⬇️  Downloading: {url}")
-            response = self.session.get(url, timeout=15, allow_redirects=True)
+            
+            headers = {}
+            if referrer:
+                headers['Referer'] = referrer
+            
+            # Retry logic
+            max_retries = 3
+            response = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response = self.session.get(url, timeout=15, allow_redirects=True, headers=headers)
+                    if response.status_code == 200:
+                        break
+                except requests.RequestException as e:
+                    if attempt == max_retries - 1:
+                        raise e
+                    continue
+            
             response.raise_for_status()
 
             # Check content type

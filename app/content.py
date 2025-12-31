@@ -39,7 +39,7 @@ class ContentExtractor:
             print(f"🔍 Found {len(image_urls)} potential images")
             
             for i, img_url in enumerate(image_urls):
-                img_data = self.image_processor.download_image(img_url)
+                img_data = self.image_processor.download_image(img_url, referrer=url)
                 if img_data:
                     filename = f"image_{i}.jpg"
                     processed_images.append({
@@ -83,7 +83,7 @@ class ContentExtractor:
             print(f"🔍 Found {len(image_urls)} potential images in HTML")
             
             for i, img_url in enumerate(image_urls):
-                img_data = self.image_processor.download_image(img_url)
+                img_data = self.image_processor.download_image(img_url, referrer=base_url)
                 if img_data:
                     filename = f"image_{i}.jpg"
                     processed_images.append({
