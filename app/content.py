@@ -106,45 +106,43 @@ class ContentExtractor:
             raise e
 
     def _insert_images_into_content(self, soup, images):
-        """Insert image references into the clean HTML content - ported from simple_web_app.py"""
+        """
+        Update existing img tags in the Readability-cleaned content with our downloaded images.
+        This preserves the original image positions from the article.
+        """
         if not images:
             return
 
-        # Find good places to insert images (paragraphs, headings)
-        content_elements = soup.find_all(['p', 'h2', 'h3', 'h4', 'div'])
-        content_elements = [elem for elem in content_elements if len(elem.get_text().strip()) > 50]
+        # Build a lookup map from original URL to our processed image
+        url_to_image = {}
+        for img in images:
+            if 'original_url' in img:
+                url_to_image[img['original_url']] = img
 
-        # Insert images at reasonable intervals
-        if content_elements:
-            images_inserted = 0
+        # Find all existing img tags in the cleaned content
+        img_tags = soup.find_all('img')
+        images_updated = 0
+
+        for img_tag in img_tags:
+            # Get the original src
+            original_src = img_tag.get('src') or img_tag.get('data-src')
+            if not original_src:
+                continue
+
+            # Check if we have a downloaded version of this image
+            matching_image = url_to_image.get(original_src)
             
-            # Calculate interval to spread images evenly
-            if len(content_elements) > 0 and len(images) > 0:
-                interval = max(1, len(content_elements) // len(images))
+            if matching_image:
+                # Update the src to point to our local copy
+                img_tag['src'] = f"images/{matching_image['filename']}"
+                img_tag['alt'] = img_tag.get('alt', 'Article image')
+                # Remove lazy-loading attributes
+                for attr in ['data-src', 'data-srcset', 'srcset', 'loading']:
+                    if attr in img_tag.attrs:
+                        del img_tag.attrs[attr]
+                images_updated += 1
             else:
-                interval = 1
+                # Image not in our downloaded set - remove it to avoid broken images
+                img_tag.decompose()
 
-            for i, elem in enumerate(content_elements):
-                if images_inserted >= len(images):
-                    break
-
-                # Insert an image after this element at intervals
-                if i % interval == 0:
-                    image = images[images_inserted]
-                    
-                    # Create container
-                    figure = soup.new_tag('figure')
-                    figure['class'] = 'image-container'
-                    
-                    # Create img
-                    img_tag = soup.new_tag('img')
-                    img_tag['src'] = f"images/{image['filename']}"
-                    img_tag['alt'] = "Article image"
-                    
-                    figure.append(img_tag)
-                    
-                    # Insert after the current element
-                    elem.insert_after(figure)
-                    images_inserted += 1
-
-        print(f"📝 Inserted {images_inserted} image references into content")
+        print(f"📝 Updated {images_updated} image references in content (preserved positions)")
